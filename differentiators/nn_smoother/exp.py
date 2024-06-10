@@ -370,7 +370,7 @@ if __name__ == '__main__':
     parser.add_argument('--dyn_train_share', type=float, default=0.8)
     parser.add_argument('--smoother_type', type=str, default='DeterministicEnsemble')
     parser.add_argument('--dyn_type', type=str, default='DeterministicFSVGDEnsemble')
-    parser.add_argument('--logging_mode_wandb', type=int, default=2)
+    parser.add_argument('--logging_mode_wandb', type=int, default=0)
     parser.add_argument('--x_src', type=str, default='smoother')
     args = parser.parse_args()
     main(args)
