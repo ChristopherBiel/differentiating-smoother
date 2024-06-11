@@ -49,7 +49,6 @@ def derivative(self, input: chex.Array, bnn_state: BNNState) -> chex.Array:
     chex.assert_shape(input, (self.input_dim,))
     v_apply = vmap(_single_derivative, in_axes=(None, 0, None, None), out_axes=0)
     derivative = v_apply(self, bnn_state.vmapped_params, input, bnn_state.data_stats)
-    print(f"Derivative shape: {derivative.shape}")
     assert derivative.shape == (self.num_particles, self.output_dim)
     return ParticleDistribution(particle_means=derivative)
 
@@ -66,22 +65,33 @@ class SmootherNet(BNNStatisticalModel):
         self.model._single_derivative = _single_derivative
         self.model.derivative = derivative
 
-    def _learnOneTrajectory(self, key, data: Data) -> StatisticalModelOutput[BNNState]:
+    def train_new_smoother(self, key, data: Data) -> StatisticalModelOutput[BNNState]:
+        """Train the smoother on a single trajectory.
+        Args:
+            key: The PRNG key
+                type: jnp.ndarray
+            data: The data to train on
+                type: Data"""
+        assert data.inputs.ndim == 2
+        assert data.outputs.ndim == 2
+        assert data.inputs.shape[1] == self.input_dim
+        assert data.outputs.shape[1] == self.output_dim
+        assert data.outputs.shape[0] == data.inputs.shape[0]
+
         init_model_state = self.init(key)
-        print("Data shape for learning: ", data.inputs.shape, data.outputs.shape)
-        print("Data types for learning: ", type(data.inputs), type(data.outputs))
-        def update_fn(model_state, data):
-            input = jax.device_get(data.inputs)
-            output = jax.device_get(data.outputs)
-            data = Data(inputs=input, outputs=output)
-            print("Data types for learning after get: ", type(data.inputs), type(data.outputs))
-            return self.update(model_state, data)
-        model_state = update_fn(model_state=init_model_state, data=data)
+        model_state = self.update(init_model_state, data=data)
         return model_state
     
-    def _derivative(self,
+    def derivative(self,
                    input: chex.Array,
                    stats_model_state: StatisticalModelState[ModelState]) -> StatisticalModelOutput[ModelState]:
+        """Compute the derivative of the model at a single input.
+        Args:
+            input: The input at which to compute the derivative
+                shape: (input_dim,)
+                type: chex.Array
+            stats_model_state: The state of the statistical model
+                type: StatisticalModelState[ModelState]"""
         chex.assert_shape(input, (self.input_dim,))
         part_dist = self.model.derivative(self.model, input=input, bnn_state=stats_model_state.model_state)
         statistical_model = StatisticalModelOutput(mean=part_dist.mean(), epistemic_std=part_dist.stddev(),
@@ -89,32 +99,20 @@ class SmootherNet(BNNStatisticalModel):
                                                    statistical_model_state=stats_model_state)
         return statistical_model
     
-    def _derivative_batch(self,
+    def derivative_batch(self,
                          input: chex.Array,
                          statistical_model_state: StatisticalModelState[ModelState]) -> StatisticalModelOutput[ModelState]:
-        ders = vmap(self._derivative, in_axes=(0, self.vmap_input_axis(0)),
+        """Compute the derivative of the model at a batch of inputs.
+        Args:
+            input: The input at which to compute the derivative
+                shape: (batch_size, input_dim)
+                type: chex.Array
+            statistical_model_state: The state of the statistical model
+                type: StatisticalModelState[ModelState]"""
+        chex.assert_shape(input, (None, self.input_dim))
+        ders = vmap(self.derivative, in_axes=(0, self.vmap_input_axis(0)),
                      out_axes=self.vmap_output_axis(0))(input, statistical_model_state)
         return ders
-    
-    def learnSmoothers(self, key, data: Data) -> StatisticalModelState[BNNState]:
-        learn = vmap(self._learnOneTrajectory, in_axes=(0,0), out_axes=0)
-        keys = jr.split(key, data.inputs.shape[0])
-        model_states = learn(keys, data)
-        return model_states
-    
-    def calcDerivative(self, model_states: StatisticalModelState[BNNState],
-                       data: Data) -> StatisticalModelOutput[BNNState]:
-        # Split the different trajectories in the data into separate datasets
-        v_apply = vmap(self._derivative_batch, in_axes=(0, 0), out_axes=0)
-        derivatives = v_apply(data.inputs, model_states)
-        return derivatives
-    
-    def smoother_predict(self,
-                      input: chex.Array,
-                      statistical_model_state: StatisticalModelState[BNNState]) -> StatisticalModelOutput[BNNState]:
-        v_apply = vmap(self.predict_batch, in_axes=(0, 0), out_axes=0)
-        preds = v_apply(input, statistical_model_state)
-        return preds
     
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
