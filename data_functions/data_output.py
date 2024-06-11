@@ -25,14 +25,24 @@ def plot_derivative_data(t: chex.Array,
     
     # Data has to be split again to be able to plot individual trajectories easier
     if x.ndim == 2:
-        data = Data(inputs=t, outputs=jnp.concatenate([x, x_dot_true, x_dot_est, x_dot_est_std], axis=-1))
+        if x_dot_smoother is not None:
+            if x_dot_smoother_std is not None:
+                data = Data(inputs=t, outputs=jnp.concatenate([x, x_dot_true, x_dot_est, x_dot_est_std, x_dot_smoother, x_dot_smoother_std], axis=-1))
+            else:
+                data = Data(inputs=t, outputs=jnp.concatenate([x, x_dot_true, x_dot_est, x_dot_est_std, x_dot_smoother], axis=-1))
+        else:
+            data = Data(inputs=t, outputs=jnp.concatenate([x, x_dot_true, x_dot_est, x_dot_est_std], axis=-1))
         data, num_trajectories = split_dataset(data)
 
         t = data.inputs
         x = data.outputs[:,:,:state_dim]
         x_dot_true = data.outputs[:,:,state_dim:state_dim*2]
         x_dot_est = data.outputs[:,:,state_dim*2:state_dim*3]
-        x_dot_est_std = data.outputs[:,:,state_dim*3:]
+        x_dot_est_std = data.outputs[:,:,state_dim*3:state_dim*4]
+        if x_dot_smoother is not None:
+            x_dot_smoother = data.outputs[:,:,state_dim*4:state_dim*5]
+            if x_dot_smoother_std is not None:
+                x_dot_smoother_std = data.outputs[:,:,state_dim*5:]
 
     fig, axes = plt.subplots(state_dim, num_trajectories_to_plot, figsize=(16,9))
     for k01 in range(state_dim):
@@ -45,11 +55,11 @@ def plot_derivative_data(t: chex.Array,
                                             label=r'$2\sigma$', alpha=0.3, color='blue')
                 if x_dot_smoother is not None:
                     axes[k01][k02].plot(t[k02,:,0].reshape(-1), x_dot_smoother[k02,:,k01], color='red', label=r'$\dot{x}_{SMOOTHER}$')
-                if x_dot_smoother_std is not None:
-                    axes[k01][k02].fill_between(t[0,:,0].reshape(-1),
-                                                (x_dot_smoother[k02,:,k01] - beta[k01] * x_dot_smoother_std[k02,:,k01]).reshape(-1),
-                                                (x_dot_smoother[k02,:,k01] + beta[k01] * x_dot_smoother_std[k02,:,k01]).reshape(-1),
-                                                label=r'$2\sigma$', alpha=0.3, color='red')
+                    if x_dot_smoother_std is not None:
+                        axes[k01][k02].fill_between(t[0,:,0].reshape(-1),
+                                                    (x_dot_smoother[k02,:,k01] - beta[k01] * x_dot_smoother_std[k02,:,k01]).reshape(-1),
+                                                    (x_dot_smoother[k02,:,k01] + beta[k01] * x_dot_smoother_std[k02,:,k01]).reshape(-1),
+                                                    label=r'$2\sigma$', alpha=0.3, color='red')
                 axes[k01][k02].plot(t[0,:,0].reshape(-1), x_dot_true[k02,:,k01], color='green', label=r'$\dot{x}_{TRUE}$')
                 axes[k01][k02].set_ylabel(state_labels[k01])
                 axes[k01][k02].set_xlabel(r'Time [s]')
@@ -63,11 +73,11 @@ def plot_derivative_data(t: chex.Array,
                                     label=r'$2\sigma$', alpha=0.3, color='blue')
             if x_dot_smoother is not None:
                 axes[k01].plot(t[0,:,0].reshape(-1), x_dot_smoother[0,:,k01], color='red', label=r'$\dot{x}_{SMOOTHER}$')
-            if x_dot_smoother_std is not None:
-                axes[k01].fill_between(t[0,:,0].reshape(-1),
-                                        (x_dot_smoother[0,:,k01] - beta[k01] * x_dot_smoother_std[0,:,k01]).reshape(-1),
-                                        (x_dot_smoother[0,:,k01] + beta[k01] * x_dot_smoother_std[0,:,k01]).reshape(-1),
-                                        label=r'$2\sigma$', alpha=0.3, color='red')
+                if x_dot_smoother_std is not None:
+                    axes[k01].fill_between(t[0,:,0].reshape(-1),
+                                            (x_dot_smoother[0,:,k01] - beta[k01] * x_dot_smoother_std[0,:,k01]).reshape(-1),
+                                            (x_dot_smoother[0,:,k01] + beta[k01] * x_dot_smoother_std[0,:,k01]).reshape(-1),
+                                            label=r'$2\sigma$', alpha=0.3, color='red')
             axes[k01].plot(t[0,:,0].reshape(-1), x_dot_true[0,:,k01], color='green', label=r'$\dot{x}_{TRUE}$')
             axes[k01].set_ylabel(state_labels[k01])
             axes[k01].set_xlabel(r'Time [s]')
@@ -124,6 +134,13 @@ def plot_data(t: chex.Array,
             u1 = u[0,:,:]
         if x_dot is not None:
             x_dot1 = x_dot[0,:,:]
+    if num_dim == 2:
+        t1 = t
+        x1 = x
+        if u is not None:
+            u1 = u
+        if x_dot is not None:
+            x_dot1 = x_dot
     state_dim = x.shape[-1]
     input_dim = u.shape[-1]
     if state_dim > 1 or input_dim > 1:
@@ -152,8 +169,11 @@ def plot_data(t: chex.Array,
         axes[2].legend()
         axes[2].grid(True, which='both')
         for k01 in range(input_dim):
-            for k02 in range(u.shape[0]):
-                axes[3+k01].plot(t[k02,:,k01], u[k02,:,k01], label=r'$u_{%s, traj%s}$'%(str(k01),str(k02)))
+            if u.ndim == 3:
+                for k02 in range(u.shape[0]):
+                    axes[3+k01].plot(t[:,k01], u[k02,:,k01], label=r'$u_{%s, traj%s}$'%(str(k01),str(k02)))
+            elif u.ndim == 2:
+                axes[3+k01].plot(t1, u1[:,k01], label=r'$u_{%s}$'%(str(k01)))
             axes[3+k01].set_xlabel('Time')
             axes[3+k01].set_ylabel('Inputs')
             plt.legend()
