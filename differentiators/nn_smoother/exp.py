@@ -16,9 +16,9 @@ from data_functions.data_handling import split_dataset
 from data_functions.data_output import plot_derivative_data, plot_data
 from differentiators.eval import evaluate_dyn_model
 
-def experiment(project_name: str = 'LearnDynamicsModel',
+def experiment(project_name: str = 'DiffSmoother',
                seed: int = 0,
-               num_traj: int = 6,
+               num_traj: int = 1,
                sample_points: int = 64,
                noise_level: float = 0.01,
                smoother_feature_size: int = 64,
@@ -40,7 +40,7 @@ def experiment(project_name: str = 'LearnDynamicsModel',
                return_model_state: bool = False,):
     
     # Input checks
-    assert num_traj > 0
+    assert num_traj == 1
     assert sample_points > 0
     assert smoother_type in ['DeterministicEnsemble', 'ProbabilisticEnsemble', 'DeterministicFSVGDEnsemble',
                              'ProbabilisticFSVGDEnsemble'], f"Unknown smoother BNN type: {smoother_type}"
@@ -78,12 +78,10 @@ def experiment(project_name: str = 'LearnDynamicsModel',
     key = jr.PRNGKey(seed=seed)
     t, x, u, x_dot = sample_random_pendulum_data(num_points=sample_points,
                                                  noise_level=noise_level,
-                                                 key=key,
-                                                 num_trajectories=num_traj,
-                                                 initial_states=None,)
+                                                 key=key,)
 
     if logging_mode_wandb > 0:
-        fig = plot_data(t, x, u, x_dot, title='One trajectory of the sampled training data (pendulum)')
+        fig = plot_data(t, x, u, x_dot, title='Training data (pendulum)')
         wandb.log({'Training Data': wandb.Image(fig)})
 
     smoother_data = Data(inputs=t, outputs=x)
@@ -171,50 +169,32 @@ def experiment(project_name: str = 'LearnDynamicsModel',
                             )
     else:
         raise NotImplementedError(f"Unknown BNN type: {smoother_type}")
-
-    # Learn the smoother
-    model_states = model.learnSmoothers(key, smoother_data)
-    pred_x = model.smoother_predict(smoother_data.inputs, model_states)
-    ders = model.calcDerivative(model_states, smoother_data)
+    
+    model_states = model.train_new_smoother(key, smoother_data)
+    pred_x = model.predict_batch(t, model_states)
+    ders = model.derivative_batch(t, model_states)
 
     # Plot the results for the first three trajectories
     if logging_mode_wandb > 0:
-        # Define required variables
-        num_traj_to_plot = min(num_traj, 2)
-
-        fig, axes = plt.subplots(output_dim, num_traj_to_plot, figsize=(16, 9))
-        for i in range(num_traj_to_plot):
-            for j in range(output_dim):
-                axes[j][i].plot(smoother_data.inputs[i,:], smoother_data.outputs[i,:,j], color=[0.2, 0.8, 0],label=r'x')
-                axes[j][i].plot(smoother_data.inputs[i,:], x_dot[i,:,j], color='green', label=r'$\dot{x}_{TRUE}$')
-                axes[j][i].plot(smoother_data.inputs[i,:], pred_x.mean[i,:,j], color='orange', label=r'$x_{SMOOTHER}$')
-                axes[j][i].plot(smoother_data.inputs[i,:], ders.mean[i,:,j], color='red', label=r'$\dot{x}_{SMOOTHER}$')
-                axes[j][i].fill_between(smoother_data.inputs[i,:].reshape(-1),
-                                        (ders.mean[i,:,j] - ders.statistical_model_state.beta[i,j] * ders.epistemic_std[i,:,j]).reshape(-1),
-                                        (ders.mean[i,:,j] + ders.statistical_model_state.beta[i,j] * ders.epistemic_std[i,:,j]).reshape(-1),
-                                        label=r'$2\sigma$', alpha=0.3, color='red')
-                axes[j][i].grid(True, which='both')
-            axes[0][i].set_title(r'Trajectory %s'%(str(i)))
-            axes[-1][i].set_xlabel(r'Time [s]')
-            axes[-1][i].legend()
-            axes[-1][i].legend()
-        # Add labels, legends and titles
-        axes[0][0].set_ylabel(r'$cos(\theta)$')
-        axes[1][0].set_ylabel(r'$sin(\theta)$')
-        axes[2][0].set_ylabel(r'$\omega$')
+        fig, axes = plt.subplots(output_dim, 1, figsize=(16, 9))
+        for j in range(output_dim):
+            axes[j].plot(smoother_data.inputs[:], smoother_data.outputs[:,j], color=[0.2, 0.8, 0],label=r'x')
+            axes[j].plot(smoother_data.inputs[:], x_dot[:,j], color='green', label=r'$\dot{x}_{TRUE}$')
+            axes[j].plot(smoother_data.inputs[:], pred_x.mean[:,j], color='orange', label=r'$x_{SMOOTHER}$')
+            axes[j].plot(smoother_data.inputs[:], ders.mean[:,j], color='red', label=r'$\dot{x}_{SMOOTHER}$')
+            axes[j].fill_between(smoother_data.inputs[:].reshape(-1),
+                                    (ders.mean[:,j] - ders.statistical_model_state.beta[j] * ders.epistemic_std[:,j]).reshape(-1),
+                                    (ders.mean[:,j] + ders.statistical_model_state.beta[j] * ders.epistemic_std[:,j]).reshape(-1),
+                                    label=r'$2\sigma$', alpha=0.3, color='red')
+            axes[j].grid(True, which='both')
+        axes[0].set_ylabel(r'$cos(\theta)$')
+        axes[1].set_ylabel(r'$sin(\theta)$')
+        axes[2].set_ylabel(r'$\omega$')
+        axes[2].set_xlabel(r'Time [s]')
+        axes[2].legend()
+        axes[2].legend()
         plt.tight_layout()
         wandb.log({'smoother': wandb.Image(plt)})
-
-    # Calculate the smoother error
-    # def mse(x_dot, x_dot_pred):
-    #     return jnp.power((x_dot-x_dot_pred),2).mean()
-    # def dim_mse(x_dot, x_dot_pred, x_dot_pred_var):
-    #     v_apply1 = jax.vmap(mse, in_axes=(0, 0))
-    #     return v_apply1(x_dot, x_dot_pred).mean(axis=0)
-    # smoother_mse = jax.vmap(dim_mse, in_axes=(2, 2))(x_dot, ders.mean)
-    # wandb.log({"smoother_mse_dim1": smoother_mse[0]})
-    # wandb.log({"smoother_mse_dim2": smoother_mse[1]})
-    # wandb.log({"smoother_mse_comb": smoother_mse[0] + smoother_mse[1]})
 
     # -------------------- Dynamics Model --------------------
     # The split data is concatinated again and add the input
@@ -305,7 +285,7 @@ def experiment(project_name: str = 'LearnDynamicsModel',
                                    x_dot_smoother_std=None,
                                    beta=dyn_preds.statistical_model_state.beta,
                                    source='DYN. MODEL',
-                                   num_trajectories_to_plot=2,
+                                   num_trajectories_to_plot=1,
                                    )
         wandb.log({'dynamics': wandb.Image(fig)})
 
@@ -351,9 +331,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project_name', type=str, default='LearnDynamicsModel')
+    parser.add_argument('--project_name', type=str, default='DiffSmoother')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--num_traj', type=int, default=12)
+    parser.add_argument('--num_traj', type=int, default=1)
     parser.add_argument('--noise_level', type=float, default=0.01)
     parser.add_argument('--sample_points', type=int, default=64)
     parser.add_argument('--smoother_feature_size', type=int, default=64)
@@ -370,7 +350,7 @@ if __name__ == '__main__':
     parser.add_argument('--dyn_train_share', type=float, default=0.8)
     parser.add_argument('--smoother_type', type=str, default='DeterministicEnsemble')
     parser.add_argument('--dyn_type', type=str, default='DeterministicFSVGDEnsemble')
-    parser.add_argument('--logging_mode_wandb', type=int, default=0)
+    parser.add_argument('--logging_mode_wandb', type=int, default=2)
     parser.add_argument('--x_src', type=str, default='smoother')
     args = parser.parse_args()
     main(args)
