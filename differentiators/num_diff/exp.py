@@ -17,7 +17,7 @@ from data_functions.data_handling import split_dataset
 from data_functions.data_output import plot_derivative_data, plot_data
 from differentiators.eval import evaluate_dyn_model
 
-def experiment(project_name: str = 'LearnDynamicsModel',
+def experiment(project_name: str = 'DiffSmoother',
                seed: int=0,
                num_traj: int = 12,
                sample_points: int = 64,
@@ -242,7 +242,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project_name', type=str, default='LearnDynamicsModel')
+    parser.add_argument('--project_name', type=str, default='DiffSmoother')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--num_traj', type=int, default=12)
     parser.add_argument('--noise_level', type=float, default=0.01)
