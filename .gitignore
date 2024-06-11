@@ -1,0 +1,29 @@
+# DS Store files
+.DS_Store
+
+# wandb files
+wandb*
+
+# egg-info files
+*egg-info
+
+# idea files
+.idea/
+
+#pycache
+__pycache__
+
+# Virtual environment files
+env/
+venv/
+.env/
+.venv/
+ENV/
+VENV/
+
+# Data output and log files
+*.pdf
+out/
+log/
+logs/
+output/
