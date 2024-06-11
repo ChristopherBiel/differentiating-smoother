@@ -69,8 +69,8 @@ def create_random_control_sequence(num_points: int,
 def sample_random_pendulum_data(num_points: int,
                                 noise_level: chex.Array | float | None,
                                 key: jr.PRNGKey,
-                                num_trajectories: int | None,
-                                initial_states: chex.Array | None,
+                                num_trajectories: int = None,
+                                initial_states: chex.Array = None,
                                 input_exponent: float = 3) -> (chex.Array, chex.Array, chex.Array, chex.Array):
     state_dim = 3
     if num_trajectories is None and initial_states is None:
@@ -122,6 +122,13 @@ def sample_random_pendulum_data(num_points: int,
         noise_level = noise_level * (jnp.max(x, axis=(0, 1)) - jnp.min(x, axis=(0, 1)) + 0.01)
         print(f"Noise level scaled to the state range: {noise_level}")
         x = x + noise_level * jr.normal(key=jr.PRNGKey(0), shape=x.shape)
+
+    # If there is only one trajectory, return the data as 2D arrays
+    if num_trajectories == 1:
+        t = t.reshape(-1, 1)
+        x = x.reshape(-1, state_dim)
+        u = u.reshape(-1, 1)
+        x_dot = x_dot.reshape(-1, state_dim)
 
     return t, x, u, x_dot
 
