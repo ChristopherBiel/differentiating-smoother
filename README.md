@@ -8,6 +8,6 @@ pip install git+https://github.com/ChristopherBiel/differentiating-smoother.git
 
 or experimented with directly by installing all packages with
 ```
-pip install -r requirements.txt
+pip install .
 ```
 and adding the path of the main folder to the python path.
