@@ -11,10 +11,10 @@ from bsm.bayesian_regression.bayesian_neural_networks.deterministic_ensembles im
 from bsm.bayesian_regression.bayesian_neural_networks.probabilistic_ensembles import ProbabilisticEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.fsvgd_ensemble import DeterministicFSVGDEnsemble, ProbabilisticFSVGDEnsemble
 from bsm.statistical_model.bnn_statistical_model import BNNStatisticalModel
-from data_functions.data_creation import create_example_data, example_function_derivative
-from data_functions.data_creation import sample_pendulum_with_input, sample_random_pendulum_data
-from data_functions.data_handling import split_dataset
-from data_functions.data_output import plot_derivative_data, plot_data
+from diff_smoothers.data_functions.data_creation import create_example_data, example_function_derivative
+from diff_smoothers.data_functions.data_creation import sample_pendulum_with_input, sample_random_pendulum_data
+from diff_smoothers.data_functions.data_handling import split_dataset
+from diff_smoothers.data_functions.data_output import plot_derivative_data, plot_data
 from diff_smoothers.eval import evaluate_dyn_model
 
 def experiment(project_name: str = 'LearnDynamicsModel',

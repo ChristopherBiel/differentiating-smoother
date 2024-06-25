@@ -6,8 +6,8 @@ import flax.struct as struct
 import jax.numpy as jnp
 import jax.random as jr
 
-from systems.dynamics.base_dynamics import Dynamics, DynamicsParams
-from systems.rewards.base_rewards import Reward, RewardParams
+from diff_smoothers.systems.dynamics.base_dynamics import Dynamics, DynamicsParams
+from diff_smoothers.systems.rewards.base_rewards import Reward, RewardParams
 
 
 @chex.dataclass

@@ -4,9 +4,9 @@ import jax.random as jr
 import chex
 from jax import vmap
 
-from systems.pendulum_system import PendulumSystem
 from bsm.utils.normalization import Data
-from data_functions.icem_optimizer import powerlaw_psd_gaussian
+from diff_smoothers.systems.pendulum_system import PendulumSystem
+from diff_smoothers.data_functions.icem_optimizer import powerlaw_psd_gaussian
 
 
 def example_function(t: chex.Array):

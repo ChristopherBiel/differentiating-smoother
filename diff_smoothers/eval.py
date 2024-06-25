@@ -7,8 +7,8 @@ from bsm.statistical_model.bnn_statistical_model import BNNStatisticalModel
 from bsm.bayesian_regression.bayesian_neural_networks.bnn import BNNState
 from bsm.utils.type_aliases import StatisticalModelState
 from bsm.utils.normalization import Data
-from data_functions.data_creation import create_random_control_sequence, sample_pendulum_with_input
-from data_functions.data_output import plot_derivative_data, plot_prediction_data
+from diff_smoothers.data_functions.data_creation import create_random_control_sequence, sample_pendulum_with_input
+from diff_smoothers.data_functions.data_output import plot_derivative_data, plot_prediction_data
 
 
 def evaluate_dyn_model(dyn_model: BNNStatisticalModel,
