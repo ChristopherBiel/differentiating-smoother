@@ -4,9 +4,9 @@ import chex
 import jax.numpy as jnp
 import jax.random
 
-from systems.base_systems import System, SystemParams, SystemState
-from systems.dynamics.pendulum_dynamics import PendulumDynamics, PendulumDynamicsParams
-from systems.rewards.pendulum_reward import PendulumReward, PendulumRewardParams
+from diff_smoothers.systems.base_systems import System, SystemParams, SystemState
+from diff_smoothers.systems.dynamics.pendulum_dynamics import PendulumDynamics, PendulumDynamicsParams
+from diff_smoothers.systems.rewards.pendulum_reward import PendulumReward, PendulumRewardParams
 
 
 class PendulumSystem(System[PendulumDynamicsParams, PendulumRewardParams]):

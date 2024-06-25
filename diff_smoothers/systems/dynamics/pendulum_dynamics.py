@@ -6,7 +6,7 @@ import flax.struct as struct
 import jax.numpy as jnp
 from distrax import Distribution
 
-from systems.dynamics.base_dynamics import Dynamics
+from diff_smoothers.systems.dynamics.base_dynamics import Dynamics
 
 
 @chex.dataclass

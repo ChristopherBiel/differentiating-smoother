@@ -114,6 +114,15 @@ class SmootherNet(BNNStatisticalModel):
                      out_axes=self.vmap_output_axis(0))(input, statistical_model_state)
         return ders
     
+    def plot_fit(self,
+                 inputs: chex.Array,
+                 pred_x: chex.Array,
+                 true_x: chex.Array,
+                 pred_x_dot: chex.Array,
+                 true_x_dot: chex.Array,):
+        """Plot the fit of the model."""
+        pass
+    
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 

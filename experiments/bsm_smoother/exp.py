@@ -5,16 +5,16 @@ import matplotlib.pyplot as plt
 import argparse
 
 from bsm.utils.normalization import Data
-from differentiators.nn_smoother.smoother_net import SmootherNet
+from diff_smoothers.smoother_net import SmootherNet
 from bsm.bayesian_regression.bayesian_neural_networks.deterministic_ensembles import DeterministicEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.probabilistic_ensembles import ProbabilisticEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.fsvgd_ensemble import DeterministicFSVGDEnsemble, ProbabilisticFSVGDEnsemble
 from bsm.statistical_model.bnn_statistical_model import BNNStatisticalModel
-from data_functions.data_creation import create_example_data, example_function_derivative
-from data_functions.data_creation import sample_pendulum_with_input, sample_random_pendulum_data
-from data_functions.data_handling import split_dataset
-from data_functions.data_output import plot_derivative_data, plot_data
-from differentiators.eval import evaluate_dyn_model
+from diff_smoothers.data_functions.data_creation import create_example_data, example_function_derivative
+from diff_smoothers.data_functions.data_creation import sample_pendulum_with_input, sample_random_pendulum_data
+from diff_smoothers.data_functions.data_handling import split_dataset
+from diff_smoothers.data_functions.data_output import plot_derivative_data, plot_data
+from diff_smoothers.eval import evaluate_dyn_model
 
 def experiment(project_name: str = 'DiffSmoother',
                seed: int = 0,
@@ -332,7 +332,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--project_name', type=str, default='DiffSmoother')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=12)
     parser.add_argument('--num_traj', type=int, default=1)
     parser.add_argument('--noise_level', type=float, default=0.01)
     parser.add_argument('--sample_points', type=int, default=64)
@@ -342,11 +342,11 @@ if __name__ == '__main__':
     parser.add_argument('--dyn_hidden_layers', type=int, default=2)
     parser.add_argument('--smoother_particles', type=int, default=12)
     parser.add_argument('--dyn_particles', type=int, default=6)
-    parser.add_argument('--smoother_training_steps', type=int, default=8000)
-    parser.add_argument('--dyn_training_steps', type=int, default=32000)
+    parser.add_argument('--smoother_training_steps', type=int, default=4_000)
+    parser.add_argument('--dyn_training_steps', type=int, default=32_000)
     parser.add_argument('--smoother_weight_decay', type=float, default=3e-4)
     parser.add_argument('--dyn_weight_decay', type=float, default=3e-4)
-    parser.add_argument('--smoother_train_share', type=float, default=0.8)
+    parser.add_argument('--smoother_train_share', type=float, default=1.0)
     parser.add_argument('--dyn_train_share', type=float, default=0.8)
     parser.add_argument('--smoother_type', type=str, default='DeterministicEnsemble')
     parser.add_argument('--dyn_type', type=str, default='DeterministicFSVGDEnsemble')

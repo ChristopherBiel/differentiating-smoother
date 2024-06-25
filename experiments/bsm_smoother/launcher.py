@@ -1,5 +1,5 @@
-from differentiators.utils import generate_base_command, generate_run_commands, dict_permutations
-import differentiators.nn_smoother.exp as exp
+from experiments.utils import generate_base_command, generate_run_commands, dict_permutations
+import experiments.bsm_smoother.exp as exp
 
 general_configs = {
     'project_name': ['BNNSweep_240530'],

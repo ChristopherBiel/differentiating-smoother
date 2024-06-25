@@ -6,7 +6,7 @@ import flax.struct as struct
 import jax.numpy as jnp
 from distrax import Distribution
 
-from systems.rewards.base_rewards import Reward
+from diff_smoothers.systems.rewards.base_rewards import Reward
 
 
 @chex.dataclass

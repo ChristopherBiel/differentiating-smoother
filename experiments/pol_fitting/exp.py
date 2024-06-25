@@ -5,19 +5,19 @@ from jax import vmap
 import matplotlib.pyplot as plt
 import argparse
 
-from differentiators.num_diff.numerical_differentiation import fitMultiStateTikhonov
+from diff_smoothers.polynomial_fitting import fitMultiStatePolynomial
 from bsm.utils.normalization import Data
 from bsm.bayesian_regression.bayesian_neural_networks.deterministic_ensembles import DeterministicEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.probabilistic_ensembles import ProbabilisticEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.fsvgd_ensemble import DeterministicFSVGDEnsemble, ProbabilisticFSVGDEnsemble
 from bsm.statistical_model.bnn_statistical_model import BNNStatisticalModel
-from data_functions.data_creation import create_example_data, example_function_derivative
-from data_functions.data_creation import sample_pendulum_with_input, sample_random_pendulum_data
-from data_functions.data_handling import split_dataset
-from data_functions.data_output import plot_derivative_data, plot_data
-from differentiators.eval import evaluate_dyn_model
+from diff_smoothers.data_functions.data_creation import create_example_data, example_function_derivative
+from diff_smoothers.data_functions.data_creation import sample_pendulum_with_input, sample_random_pendulum_data
+from diff_smoothers.data_functions.data_handling import split_dataset
+from diff_smoothers.data_functions.data_output import plot_derivative_data, plot_data
+from diff_smoothers.eval import evaluate_dyn_model
 
-def experiment(project_name: str = 'DiffSmoother',
+def experiment(project_name: str = 'LearnDynamicsModel',
                seed: int=0,
                num_traj: int = 12,
                sample_points: int = 64,
@@ -89,23 +89,15 @@ def experiment(project_name: str = 'DiffSmoother',
 
     # Plot the results for the first three trajectories
     if logging_mode_wandb > 0:
-        fig, axes = plt.subplots(state_dim, min(2, num_traj), figsize=(16, 9))
-        for i in range(min(2, num_traj)):
+        fig, axes = plt.subplots(state_dim, min(3, num_traj), figsize=(16, 9))
+        for i in range(min(3, num_traj)):
             for j in range(state_dim):
-                axes[j][i].plot(t[i,:], x[i,:,j], color=[0.2, 0.8, 0], label=r'x')
-                axes[j][i].plot(t[i,:], x_dot[i,:,j], color='green', label=r'$\dot{x}_{TRUE}$')
-                axes[j][i].plot(t[i,:], pred_x[i,:,j], color='orange', label=r'$x_{SMOOTHER}$')
-                axes[j][i].plot(t[i,:], pred_x_dot[i,:,j], color='red', label=r'$\dot{x}_{SMOOTHER}$')
+                axes[j][i].plot(t[i,:], x[i,:,j], label=r'x')
+                axes[j][i].plot(t[i,:], pred_x[i,:,j], label=r'$x_{SMOOTHER}$')
+                axes[j][i].plot(t[i,:], pred_x_dot[i,:,j], label=r'$\dot{x}_{SMOOTHER}$')
+                axes[j][i].plot(t[i,:], x_dot[i,:,j], label=r'$\dot{x}_{TRUE}$')
                 axes[j][i].set_title(f"Trajectory {i} - x{j}")
                 axes[j][i].grid(True, which='both')
-            axes[0][i].set_title(r'Trajectory %s'%(str(i)))
-            axes[-1][i].set_xlabel(r'Time [s]')
-            axes[-1][i].legend()
-            axes[-1][i].legend()
-        # Add labels, legends and titles
-        axes[0][0].set_ylabel(r'$cos(\theta)$')
-        axes[1][0].set_ylabel(r'$sin(\theta)$')
-        axes[2][0].set_ylabel(r'$\omega$')
         plt.legend()
         plt.tight_layout()
         wandb.log({'smoother': wandb.Image(plt)})
@@ -242,17 +234,17 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project_name', type=str, default='DiffSmoother')
+    parser.add_argument('--project_name', type=str, default='LearnDynamicsModel')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--num_traj', type=int, default=12)
-    parser.add_argument('--noise_level', type=float, default=0.01)
+    parser.add_argument('--noise_level', type=float, default=None)
     parser.add_argument('--sample_points', type=int, default=64)
-    parser.add_argument('--diff_regtype', type=str, default='second')
-    parser.add_argument('--diff_lambda', type=float, default=0.002)
+    parser.add_argument('--diff_regtype', type=str, default='first')
+    parser.add_argument('--diff_lambda', type=float, default=0.001)
     parser.add_argument('--dyn_feature_size', type=int, default=128)
     parser.add_argument('--dyn_hidden_layers', type=int, default=2)
     parser.add_argument('--dyn_particles', type=int, default=6)
-    parser.add_argument('--dyn_training_steps', type=int, default=32000)
+    parser.add_argument('--dyn_training_steps', type=int, default=16000)
     parser.add_argument('--dyn_weight_decay', type=float, default=3e-4)
     parser.add_argument('--dyn_train_share', type=float, default=0.8)
     parser.add_argument('--dyn_type', type=str, default='DeterministicFSVGDEnsemble')

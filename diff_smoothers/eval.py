@@ -7,12 +7,13 @@ from bsm.statistical_model.bnn_statistical_model import BNNStatisticalModel
 from bsm.bayesian_regression.bayesian_neural_networks.bnn import BNNState
 from bsm.utils.type_aliases import StatisticalModelState
 from bsm.utils.normalization import Data
-from data_functions.data_creation import create_random_control_sequence, sample_pendulum_with_input
-from data_functions.data_output import plot_derivative_data, plot_prediction_data
+from diff_smoothers.data_functions.data_creation import create_random_control_sequence, sample_pendulum_with_input
+from diff_smoothers.data_functions.data_output import plot_derivative_data, plot_prediction_data
 
 
 def evaluate_dyn_model(dyn_model: BNNStatisticalModel,
                        dyn_model_state: StatisticalModelState[BNNState],
+                       system_sample_function = sample_pendulum_with_input,
                        num_points: int = 64,
                        seed: int = 0,
                        plot_data: bool = False,
@@ -21,7 +22,22 @@ def evaluate_dyn_model(dyn_model: BNNStatisticalModel,
                        initial_state: chex.Array = jnp.array([-1.0, 0.0, 0.0]),
                        plot_annotation_source: str = "",
                        ):
-    
+    """Evaluates a dynamics model by predicting the system state and its derivative.
+    Args:
+        dyn_model: The dynamics model to evaluate
+                   BNNStatisticalModel as defined in bsm.statistical_model.bnn_statistical_model
+        dyn_model_state: The state of the dynamics model
+                         StatisticalModelState as defined in bsm.utils.type_aliases
+        system_sample_function: A function that samples the system 
+                                (default: sample_pendulum_with_input)
+                                Takes control_input and initial_state as input and returns t, x_true, x_dot_true as chex.Array
+        num_points: The number of points to sample
+        seed: The seed for the random number generator
+        plot_data: Whether to plot the data
+        return_performance: Whether to return the performance of the model
+        colored_noise_exponent: The exponent of the colored noise
+        initial_state: The initial state of the system
+        plot_annotation_source: The source of the annotation in the plot """
     # Create a random control sequence to test the model
     key = jr.PRNGKey(seed)
     state_dim = dyn_model.output_dim
@@ -33,7 +49,7 @@ def evaluate_dyn_model(dyn_model: BNNStatisticalModel,
 
     # Evaluate the model
     current_state = jnp.stack([initial_state] * num_particles, axis=0)
-    t, x_true, x_dot_true = sample_pendulum_with_input(control_input, initial_state)
+    t, x_true, x_dot_true = system_sample_function(control_input, initial_state)
 
     x_est = jnp.zeros((num_points, state_dim))
     x_est_std = jnp.zeros((num_points, state_dim))
@@ -76,7 +92,7 @@ def evaluate_dyn_model(dyn_model: BNNStatisticalModel,
         return derivative_pred_plot, state_pred_plot
     
 if __name__ == "__main__":
-    from differentiators.nn_smoother.exp import experiment
+    from experiments.bsm_smoother.exp import experiment
     import matplotlib.pyplot as plt
     # create a small model just to test everything
     dyn_model, dyn_model_state = experiment(sample_points=32,
