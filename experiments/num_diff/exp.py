@@ -5,7 +5,7 @@ from jax import vmap
 import matplotlib.pyplot as plt
 import argparse
 
-from differentiators.num_diff.numerical_differentiation import fitMultiStateTikhonov
+from diff_smoothers.numerical_differentiation import fitMultiStateTikhonov
 from bsm.utils.normalization import Data
 from bsm.bayesian_regression.bayesian_neural_networks.deterministic_ensembles import DeterministicEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.probabilistic_ensembles import ProbabilisticEnsemble
@@ -15,7 +15,7 @@ from data_functions.data_creation import create_example_data, example_function_d
 from data_functions.data_creation import sample_pendulum_with_input, sample_random_pendulum_data
 from data_functions.data_handling import split_dataset
 from data_functions.data_output import plot_derivative_data, plot_data
-from differentiators.eval import evaluate_dyn_model
+from diff_smoothers.eval import evaluate_dyn_model
 
 def experiment(project_name: str = 'DiffSmoother',
                seed: int=0,
