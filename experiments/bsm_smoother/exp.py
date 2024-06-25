@@ -37,7 +37,8 @@ def experiment(project_name: str = 'DiffSmoother',
                dyn_type: str = 'DeterministicEnsemble',
                logging_mode_wandb: int = 0,
                x_src: str = 'smoother',
-               return_model_state: bool = False,):
+               return_model_state: bool = False,
+               log_type: str = 'image'):
     
     # Input checks
     assert num_traj == 1
@@ -176,25 +177,12 @@ def experiment(project_name: str = 'DiffSmoother',
 
     # Plot the results for the first three trajectories
     if logging_mode_wandb > 0:
-        fig, axes = plt.subplots(output_dim, 1, figsize=(16, 9))
-        for j in range(output_dim):
-            axes[j].plot(smoother_data.inputs[:], smoother_data.outputs[:,j], color=[0.2, 0.8, 0],label=r'x')
-            axes[j].plot(smoother_data.inputs[:], x_dot[:,j], color='green', label=r'$\dot{x}_{TRUE}$')
-            axes[j].plot(smoother_data.inputs[:], pred_x.mean[:,j], color='orange', label=r'$x_{SMOOTHER}$')
-            axes[j].plot(smoother_data.inputs[:], ders.mean[:,j], color='red', label=r'$\dot{x}_{SMOOTHER}$')
-            axes[j].fill_between(smoother_data.inputs[:].reshape(-1),
-                                    (ders.mean[:,j] - ders.statistical_model_state.beta[j] * ders.epistemic_std[:,j]).reshape(-1),
-                                    (ders.mean[:,j] + ders.statistical_model_state.beta[j] * ders.epistemic_std[:,j]).reshape(-1),
-                                    label=r'$2\sigma$', alpha=0.3, color='red')
-            axes[j].grid(True, which='both')
-        axes[0].set_ylabel(r'$cos(\theta)$')
-        axes[1].set_ylabel(r'$sin(\theta)$')
-        axes[2].set_ylabel(r'$\omega$')
-        axes[2].set_xlabel(r'Time [s]')
-        axes[2].legend()
-        axes[2].legend()
-        plt.tight_layout()
-        wandb.log({'smoother': wandb.Image(plt)})
+        fig, _ = model.plot_fit(t, pred_x.mean, x, ders.mean, x_dot,
+                                   state_labels=[r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$'])
+        if log_type == 'image':
+            wandb.log({'smoother': wandb.Image(fig)})
+        elif log_type == 'plotly':
+            wandb.log({'smoother': fig})
 
     # -------------------- Dynamics Model --------------------
     # The split data is concatinated again and add the input
@@ -287,7 +275,10 @@ def experiment(project_name: str = 'DiffSmoother',
                                    source='DYN. MODEL',
                                    num_trajectories_to_plot=1,
                                    )
-        wandb.log({'dynamics': wandb.Image(fig)})
+        if log_type == 'image':
+            wandb.log({'dynamics': wandb.Image(fig)})
+        elif log_type == 'plotly':
+            wandb.log({'dynamics': fig})
 
     # Evaluate the dynamics model:
     state_pred_mse, derivative_pred_plot, state_pred_plot = evaluate_dyn_model(dyn_model=dyn_model,
@@ -299,8 +290,12 @@ def experiment(project_name: str = 'DiffSmoother',
                                                          plot_annotation_source="DYN,SMOOTHER")
 
     if logging_mode_wandb > 0:
-        wandb.log({'derivative_prediction': wandb.Image(derivative_pred_plot)})
-        wandb.log({'state_prediction': wandb.Image(state_pred_plot)})
+        if log_type == 'image':
+            wandb.log({'derivative_prediction': wandb.Image(derivative_pred_plot)})
+            wandb.log({'state_prediction': wandb.Image(state_pred_plot)})
+        elif log_type == 'plotly':
+            wandb.log({'derivative_prediction': derivative_pred_plot})
+            wandb.log({'state_prediction': state_pred_plot})
         wandb.log({'state_prediction_mse': state_pred_mse})
 
     if return_model_state:
