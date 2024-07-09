@@ -126,21 +126,34 @@ def plot_data(t: chex.Array,
               x_dot: chex.Array = None,
               title: str = '',
               state_labels: str = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$']) -> plt.figure:
-    num_dim = x.ndim # If ndim = 3, there are different trajectories to plot
-    if num_dim == 3:
-        t1 = t[0,:,:]
-        x1 = x[0,:,:]
+    if x.ndim == 2:
+        # Split the data
         if u is not None:
-            u1 = u[0,:,:]
-        if x_dot is not None:
-            x_dot1 = x_dot[0,:,:]
-    if num_dim == 2:
-        t1 = t
-        x1 = x
-        if u is not None:
-            u1 = u
-        if x_dot is not None:
-            x_dot1 = x_dot
+            if x_dot is not None:
+                data = Data(inputs=t, outputs=jnp.concatenate([x, u, x_dot], axis=-1))
+                data, _ = split_dataset(data)
+                t = data.inputs
+                x = data.outputs[:,:,:x.shape[-1]]
+                u = data.outputs[:,:,x.shape[-1]:x.shape[-1]+u.shape[-1]]
+                x_dot = data.outputs[:,:,x.shape[-1]+u.shape[-1]:]
+            else:
+                data = Data(inputs=t, outputs=jnp.concatenate([x, u], axis=-1))
+                data, _ = split_dataset(data)
+                t = data.inputs
+                x = data.outputs[:,:,:x.shape[-1]]
+                u = data.outputs[:,:,x.shape[-1]:]
+        else:
+            data = Data(inputs=t, outputs=x)
+            data, _ = split_dataset(data)
+            t = data.inputs
+            x = data.outputs
+    t1 = t[-1,:,:]
+    x1 = x[-1,:,:]
+    if u is not None:
+        u1 = u[-1,:,:]
+    if x_dot is not None:
+        x_dot1 = x_dot[-1,:,:]
+
     state_dim = x.shape[-1]
     input_dim = u.shape[-1]
     if state_dim > 1 or input_dim > 1:
@@ -155,7 +168,7 @@ def plot_data(t: chex.Array,
             axes[2].plot(t1, x_dot1[:,k01], label=r'$\dot{x}_{%s}$'%(str(k01)))
         axes[0].set_xlabel('Time')
         axes[0].set_ylabel('States')
-        axes[0].set_title('One trajectory of the sampled data')
+        axes[0].set_title('Last trajectory of the sampled data')
         axes[0].legend()
         axes[0].grid(True, which='both')
         for k01 in range(input_dim):
@@ -169,10 +182,10 @@ def plot_data(t: chex.Array,
         axes[2].legend()
         axes[2].grid(True, which='both')
         for k01 in range(input_dim):
-            if u.ndim == 3:
+            if u.shape[0] > 1:
                 for k02 in range(u.shape[0]):
-                    axes[3+k01].plot(t[:,k01], u[k02,:,k01], label=r'$u_{%s, traj%s}$'%(str(k01),str(k02)))
-            elif u.ndim == 2:
+                    axes[3+k01].plot(t[k01,:,:], u[k02,:,k01], label=r'$u_{%s, traj%s}$'%(str(k01),str(k02)))
+            else:
                 axes[3+k01].plot(t1, u1[:,k01], label=r'$u_{%s}$'%(str(k01)))
             axes[3+k01].set_xlabel('Time')
             axes[3+k01].set_ylabel('Inputs')
