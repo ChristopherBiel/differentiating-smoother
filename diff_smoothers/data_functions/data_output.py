@@ -14,6 +14,7 @@ def plot_derivative_data(t: chex.Array,
                          x_dot_smoother: chex.Array = None,
                          x_dot_smoother_std: chex.Array = None,
                          num_trajectories_to_plot: int = 1,
+                         num_trajectory_to_plot: int = 0,
                          state_labels: str = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$'],
                          ) -> plt.figure:
     """Either pass all states and values with three dimensions (num_traj, num_samples, num_states)
@@ -56,29 +57,39 @@ def plot_derivative_data(t: chex.Array,
                 if x_dot_smoother is not None:
                     axes[k01][k02].plot(t[k02,:,0].reshape(-1), x_dot_smoother[k02,:,k01], color='red', label=r'$\dot{x}_{SMOOTHER}$')
                     if x_dot_smoother_std is not None:
-                        axes[k01][k02].fill_between(t[0,:,0].reshape(-1),
+                        axes[k01][k02].fill_between(t[k02,:,0].reshape(-1),
                                                     (x_dot_smoother[k02,:,k01] - beta[k01] * x_dot_smoother_std[k02,:,k01]).reshape(-1),
                                                     (x_dot_smoother[k02,:,k01] + beta[k01] * x_dot_smoother_std[k02,:,k01]).reshape(-1),
                                                     label=r'$2\sigma$', alpha=0.3, color='red')
-                axes[k01][k02].plot(t[0,:,0].reshape(-1), x_dot_true[k02,:,k01], color='green', label=r'$\dot{x}_{TRUE}$')
+                axes[k01][k02].plot(t[k02,:,0].reshape(-1), x_dot_true[k02,:,k01], color='green', label=r'$\dot{x}_{TRUE}$')
                 axes[k01][k02].set_ylabel(state_labels[k01])
                 axes[k01][k02].set_xlabel(r'Time [s]')
                 axes[k01][k02].set_title(r'Trajectory %s'%(str(k02)))
                 axes[k01][k02].grid(True, which='both')
         else:
-            axes[k01].plot(t[0,:,0].reshape(-1), x_dot_est[0,:,k01], color='blue', label=r'$\dot{x}_{%s}$'%(source))
-            axes[k01].fill_between(t[0,:,0].reshape(-1),
-                                    (x_dot_est[0,:,k01] - beta[k01] * x_dot_est_std[0,:,k01]).reshape(-1),
-                                    (x_dot_est[0,:,k01] + beta[k01] * x_dot_est_std[0,:,k01]).reshape(-1),
+            axes[k01].plot(t[num_trajectory_to_plot,:,0].reshape(-1),
+                           x_dot_est[num_trajectory_to_plot,:,k01], color='blue',
+                           label=r'$\dot{x}_{%s}$'%(source))
+            axes[k01].fill_between(t[num_trajectory_to_plot,:,0].reshape(-1),
+                                    (x_dot_est[num_trajectory_to_plot,:,k01] - beta[k01] *\
+                                     x_dot_est_std[num_trajectory_to_plot,:,k01]).reshape(-1),
+                                    (x_dot_est[num_trajectory_to_plot,:,k01] + beta[k01] * \
+                                     x_dot_est_std[num_trajectory_to_plot,:,k01]).reshape(-1),
                                     label=r'$2\sigma$', alpha=0.3, color='blue')
             if x_dot_smoother is not None:
-                axes[k01].plot(t[0,:,0].reshape(-1), x_dot_smoother[0,:,k01], color='red', label=r'$\dot{x}_{SMOOTHER}$')
+                axes[k01].plot(t[num_trajectory_to_plot,:,0].reshape(-1),
+                               x_dot_smoother[num_trajectory_to_plot,:,k01], color='red',
+                               label=r'$\dot{x}_{SMOOTHER}$')
                 if x_dot_smoother_std is not None:
-                    axes[k01].fill_between(t[0,:,0].reshape(-1),
-                                            (x_dot_smoother[0,:,k01] - beta[k01] * x_dot_smoother_std[0,:,k01]).reshape(-1),
-                                            (x_dot_smoother[0,:,k01] + beta[k01] * x_dot_smoother_std[0,:,k01]).reshape(-1),
+                    axes[k01].fill_between(t[num_trajectory_to_plot,:,0].reshape(-1),
+                                            (x_dot_smoother[num_trajectory_to_plot,:,k01] - beta[k01] *\
+                                             x_dot_smoother_std[num_trajectory_to_plot,:,k01]).reshape(-1),
+                                            (x_dot_smoother[num_trajectory_to_plot,:,k01] + beta[k01] *\
+                                             x_dot_smoother_std[num_trajectory_to_plot,:,k01]).reshape(-1),
                                             label=r'$2\sigma$', alpha=0.3, color='red')
-            axes[k01].plot(t[0,:,0].reshape(-1), x_dot_true[0,:,k01], color='green', label=r'$\dot{x}_{TRUE}$')
+            axes[k01].plot(t[num_trajectory_to_plot,:,0].reshape(-1),
+                           x_dot_true[num_trajectory_to_plot,:,k01], color='green',
+                           label=r'$\dot{x}_{TRUE}$')
             axes[k01].set_ylabel(state_labels[k01])
             axes[k01].set_xlabel(r'Time [s]')
             axes[k01].grid(True, which='both')
