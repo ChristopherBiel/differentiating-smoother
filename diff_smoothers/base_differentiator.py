@@ -1,31 +1,40 @@
 from abc import ABC, abstractmethod
+from typing import TypeVar, Generic, Tuple
 import chex
 import matplotlib.pyplot as plt
 
 from bsm.utils.normalization import Data
+
+AlgorithmState = TypeVar('AlgorithmState')
 
 # Defines the state of a differentiator
 @chex.dataclass
 class DifferentiatorState:
     input_data: Data                    # The input data
     key: chex.Array                     # The key
-    model_state: chex.dataclass         # The state of the model (e.g. NN weights, parameters, etc.)
+    algo_state: AlgorithmState          # The state of the model (e.g. NN weights, parameters, etc.)
 
 # Defines a base class for differentiators
-class BaseDifferentiator:
-    def __init__(self, key: chex.Array, **kwargs):
+class BaseDifferentiator(ABC, Generic[AlgorithmState]):
+    def __init__(self, **kwargs):
         self.kwargs = kwargs
 
     @abstractmethod
-    def init(self, key: chex.Array) -> DifferentiatorState:
+    def train(self, key: chex.PRNGKey, data: Data) -> DifferentiatorState[AlgorithmState]:
         raise NotImplementedError
-
-    @abstractmethod
-    def train(self, data: Data) -> DifferentiatorState:
+    
+    @abstractmethod   
+    def differentiate(self,
+                      state: DifferentiatorState[AlgorithmState],
+                      t: chex.Array) -> Tuple[DifferentiatorState[AlgorithmState], chex.Array]:
+        """Estimate the state derivatives at the given time points."""
         raise NotImplementedError
     
     @abstractmethod
-    def differentiate(self, **kwargs):
+    def predict(self,
+                state: DifferentiatorState[AlgorithmState],
+                t: chex.Array) -> chex.Array:
+        """Predict the states at the given time points."""
         raise NotImplementedError
 
     def plot_fit(self,

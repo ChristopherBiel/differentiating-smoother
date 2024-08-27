@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import argparse
 
 from bsm.utils.normalization import Data
-from diff_smoothers.smoother_net import SmootherNet
+from diff_smoothers.BNN_Differentiator import BNNSmootherDifferentiator
 from bsm.bayesian_regression.bayesian_neural_networks.deterministic_ensembles import DeterministicEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.probabilistic_ensembles import ProbabilisticEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.fsvgd_ensemble import DeterministicFSVGDEnsemble, ProbabilisticFSVGDEnsemble
@@ -109,8 +109,7 @@ def experiment(project_name: str = 'DiffSmoother',
     # -------------------- Smoother --------------------
     smoother_features = [smoother_feature_size] * smoother_hidden_layers
     if smoother_type == 'DeterministicEnsemble':
-        model = SmootherNet(input_dim=input_dim,
-                            output_dim=output_dim,
+        differentiator = BNNSmootherDifferentiator(state_dim=output_dim,
                             output_stds=data_std,
                             logging_wandb=logging_smoother_wandb,
                             beta=jnp.ones(shape=(output_dim,))*3,
@@ -124,8 +123,7 @@ def experiment(project_name: str = 'DiffSmoother',
                             eval_frequency=1000,
                             )
     elif smoother_type == 'ProbabilisticEnsemble':
-        model = SmootherNet(input_dim=input_dim,
-                            output_dim=output_dim,
+        differentiator = BNNSmootherDifferentiator(state_dim=output_dim,
                             output_stds=data_std,
                             logging_wandb=logging_smoother_wandb,
                             beta=jnp.ones(shape=(output_dim,))*3,
@@ -139,8 +137,7 @@ def experiment(project_name: str = 'DiffSmoother',
                             eval_frequency=1000,
                             )
     elif smoother_type == 'DeterministicFSVGDEnsemble':
-        model = SmootherNet(input_dim=input_dim,
-                            output_dim=output_dim,
+        differentiator = BNNSmootherDifferentiator(state_dim=output_dim,
                             output_stds=data_std,
                             logging_wandb=logging_smoother_wandb,
                             beta=jnp.ones(shape=(output_dim,))*3,
@@ -154,8 +151,7 @@ def experiment(project_name: str = 'DiffSmoother',
                             eval_frequency=1000,
                             )
     elif smoother_type == 'ProbabilisticFSVGDEnsemble':
-        model = SmootherNet(input_dim=input_dim,
-                            output_dim=output_dim,
+        differentiator = BNNSmootherDifferentiator(state_dim=output_dim,
                             output_stds=data_std,
                             logging_wandb=logging_smoother_wandb,
                             beta=jnp.ones(shape=(output_dim,))*3,
@@ -171,13 +167,13 @@ def experiment(project_name: str = 'DiffSmoother',
     else:
         raise NotImplementedError(f"Unknown BNN type: {smoother_type}")
     
-    model_states = model.train_new_smoother(key, smoother_data)
-    pred_x = model.predict_batch(t, model_states)
-    ders = model.derivative_batch(t, model_states)
+    differentiator_state = differentiator.train(key, smoother_data)
+    pred_x = differentiator.predict_distribution(differentiator_state, t)
+    differentiator_state, ders = differentiator.differentiate_distribution(differentiator_state, t)
 
     # Plot the results for the first three trajectories
     if logging_mode_wandb > 0:
-        fig, _ = model.plot_fit(t, pred_x.mean, x, ders.mean, x_dot,
+        fig, _ = differentiator.plot_fit(t, pred_x.mean, x, ders.mean, x_dot,
                                    state_labels=[r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$'])
         if log_type == 'image':
             wandb.log({'smoother': wandb.Image(fig)})
