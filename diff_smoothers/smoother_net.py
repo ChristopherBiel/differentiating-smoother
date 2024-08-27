@@ -115,36 +115,6 @@ class SmootherNet(BNNStatisticalModel):
                      out_axes=self.vmap_output_axis(0))(input, statistical_model_state)
         return ders
     
-    def plot_fit(self,
-                 inputs: chex.Array,
-                 pred_x: chex.Array,
-                 true_x: chex.Array,
-                 pred_x_dot: chex.Array,
-                 true_x_dot: chex.Array,
-                 state_labels: list[str] = None):
-        """Plot the fit of the model."""
-        chex.assert_shape(inputs, (None, self.input_dim))
-        chex.assert_shape(pred_x, (None, self.output_dim))
-        chex.assert_shape(true_x, (None, self.output_dim))
-        chex.assert_shape(pred_x_dot, (None, self.output_dim))
-        chex.assert_shape(true_x_dot, (None, self.output_dim))
-
-        fig, axes = plt.subplots(self.output_dim, 1, figsize=(16, 9))
-        for j in range(self.output_dim):
-            axes[j].plot(inputs, true_x[:,j], color=[0.2, 0.8, 0],label=r'$x_{TRUE}$')
-            axes[j].plot(inputs, true_x_dot[:,j], color='green', label=r'$\dot{x}_{TRUE}$')
-            axes[j].plot(inputs, pred_x[:,j], color='orange', label=r'$x_{SMOOTHER}$')
-            axes[j].plot(inputs, pred_x_dot[:,j], color='red', label=r'$\dot{x}_{SMOOTHER}$')
-            axes[j].grid(True, which='both')
-        if state_labels is not None:
-            for j in range(self.output_dim):
-                axes[j].set_ylabel(state_labels[j])
-        axes[2].set_xlabel(r'Time [s]')
-        axes[2].legend()
-        plt.tight_layout()
-
-        return fig, axes
-    
 if __name__ == '__main__':
 
     # Create the data
