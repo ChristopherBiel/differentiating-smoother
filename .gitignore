@@ -125,6 +125,7 @@ celerybeat.pid
 env/
 venv/
 ENV/
+VENV/
 env.bak/
 venv.bak/
 
@@ -178,3 +179,10 @@ temp/
 
 # Ignore slurm files on Euler Cluster
 slurm-*.out
+
+# Data output and log files
+*.pdf
+out/
+log/
+logs/
+output/
