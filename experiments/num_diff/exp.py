@@ -5,7 +5,7 @@ from jax import vmap
 import matplotlib.pyplot as plt
 import argparse
 
-from diff_smoothers.numerical_differentiation import fitMultiStateTikhonov
+from diff_smoothers.Numerical_Differentiator import fitMultiStateTikhonov
 from bsm.utils.normalization import Data
 from bsm.bayesian_regression.bayesian_neural_networks.deterministic_ensembles import DeterministicEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.probabilistic_ensembles import ProbabilisticEnsemble
