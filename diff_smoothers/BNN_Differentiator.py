@@ -17,7 +17,7 @@ from bsm.utils.normalization import Data
 from bsm.utils.particle_distribution import ParticleDistribution
 from bsm.utils.normalization import DataStats, Data
 
-from diff_smoothers.base_differentiator import BaseDifferentiator, DifferentiatorState
+from diff_smoothers.Base_Differentiator import BaseDifferentiator, DifferentiatorState
 
 class  ModelDerivativeDecorator:
     def __init__(self,
@@ -130,19 +130,21 @@ class BNNSmootherDifferentiator(BaseDifferentiator):
     
     def predict(self,
                 state: DifferentiatorState[BNNState],
-                t: chex.Array) -> chex.Array:
-        prediction_distribution = self.predict_distribution(state, t)
-        return prediction_distribution.mean
+                t: chex.Array) -> Tuple[DifferentiatorState[BNNState], chex.Array]:
+        state, prediction_distribution = self.predict_distribution(state, t)
+        return state, prediction_distribution.mean
 
     def predict_distribution(self,
                              state: DifferentiatorState[BNNState],
-                             t: chex.Array) -> StatisticalModelOutput[BNNState]:
+                             t: chex.Array) -> Tuple[DifferentiatorState[BNNState], StatisticalModelOutput[BNNState]]:
 
         prediction_distribution = vmap(self._predict, in_axes=(0, None),
                                        out_axes=StatisticalModelOutput(mean=0, epistemic_std=0,
                                                                        aleatoric_std=0, statistical_model_state=None))\
                                        (t, state.algo_state)
-        return prediction_distribution
+        state.algo_state = prediction_distribution.statistical_model_state
+        state.algo_state.beta = self._potential_beta(state.input_data.inputs.shape[0])
+        return state, prediction_distribution
     
     def _derivative(self,
                    input: chex.Array,
@@ -186,9 +188,8 @@ if __name__ == '__main__':
     t = jnp.linspace(d_l, d_u, num_samples).reshape(-1, 1)
     x = f(t)
     x_dot = f_dot(t)
-    x = x + noise_level * jr.normal(key=jr.PRNGKey(0), shape=x.shape)
+    x = x + noise_level * jr.normal(key=key, shape=x.shape)
     data_std = noise_level * jnp.ones(shape=(state_dim,))
-    print("Data shape: ", t.shape, x.shape, x_dot.shape)
     data = Data(inputs=t, outputs=x)
 
     diffr = BNNSmootherDifferentiator(state_dim=state_dim,

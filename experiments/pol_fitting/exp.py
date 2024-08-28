@@ -5,7 +5,7 @@ from jax import vmap
 import matplotlib.pyplot as plt
 import argparse
 
-from diff_smoothers.polynomial_fitting import fitMultiStatePolynomial
+from diff_smoothers.PolFit_Differentiator import fitMultiStatePolynomial
 from bsm.utils.normalization import Data
 from bsm.bayesian_regression.bayesian_neural_networks.deterministic_ensembles import DeterministicEnsemble
 from bsm.bayesian_regression.bayesian_neural_networks.probabilistic_ensembles import ProbabilisticEnsemble

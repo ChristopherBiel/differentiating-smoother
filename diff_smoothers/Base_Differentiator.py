@@ -33,7 +33,7 @@ class BaseDifferentiator(ABC, Generic[AlgorithmState]):
     @abstractmethod
     def predict(self,
                 state: DifferentiatorState[AlgorithmState],
-                t: chex.Array) -> chex.Array:
+                t: chex.Array) -> Tuple[DifferentiatorState[AlgorithmState], chex.Array]:
         """Predict the states at the given time points."""
         raise NotImplementedError
 
@@ -72,6 +72,8 @@ class BaseDifferentiator(ABC, Generic[AlgorithmState]):
         assert pred_x.shape[0] == pred_x_dot.shape[0] == pred_t.shape[0]
 
         fig, axes = plt.subplots(self.state_dim, 1, figsize=(16, 9))
+        if self.state_dim == 1:
+            axes = [axes]
         for j in range(self.state_dim):
             axes[j].plot(true_t, true_x[:,j], color=[0.2, 0.8, 0],label=r'$x_{TRUE}$')
             axes[j].plot(true_t, true_x_dot[:,j], color='green', label=r'$\dot{x}_{TRUE}$')
@@ -81,8 +83,8 @@ class BaseDifferentiator(ABC, Generic[AlgorithmState]):
         if state_labels is not None:
             for j in range(self.state_dim):
                 axes[j].set_ylabel(state_labels[j])
-        axes[2].set_xlabel(r'Time [s]')
-        axes[2].legend()
+        axes[-1].set_xlabel(r'Time [s]')
+        axes[-1].legend()
         plt.tight_layout()
 
         return fig, axes
