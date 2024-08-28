@@ -4,7 +4,7 @@ import jax.random as jr
 from typing import Tuple
 import chex
 
-from bsm.utils.normalization import DataStats, Data
+from bsm.utils.normalization import Data
 from diff_smoothers.Base_Differentiator import BaseDifferentiator, DifferentiatorState
 
 def createIntegrationMatrix(t_source, t_target):
@@ -24,7 +24,7 @@ def fitSingleStateTikhonov(t_source: chex.Array,
                            t_target: chex.Array,
                            regtype: str,
                            lambda_: float,
-                           init_offset: chex.Array) -> Tuple[chex.Array, chex.Array]:
+                           init_offset: chex.Array) -> Tuple[chex.Array, chex.Array, chex.Array, chex.Array]:
     """Fit to data with Tikhonov regularization
     t: (m, 1) - m different samples of data
     x: (m, 1)
@@ -68,7 +68,7 @@ def fitSingleStateTikhonov(t_source: chex.Array,
     return x_fit, x_dot_fit, A, D
 
 @chex.dataclass
-class AlgorithmState:
+class TikhonovState:
     A: chex.Array
     D: chex.Array
 
@@ -82,12 +82,13 @@ class TikhonovDifferentiator(BaseDifferentiator):
         self.regtype = regtype
         self.lambda_ = lambda_
 
-    def train(self, key: chex.PRNGKey, data: Data) -> DifferentiatorState[AlgorithmState]:
-        return DifferentiatorState(input_data=data, key=key, algo_state=AlgorithmState(A=None, D=None))
+    def train(self, key: chex.PRNGKey, data: Data) -> DifferentiatorState[TikhonovState]:
+        return DifferentiatorState(input_data=data, key=key, algo_state=TikhonovState(A=None, D=None))
 
     def differentiate(self,
-                      state: DifferentiatorState[AlgorithmState],
-                      t: chex.Array) -> Tuple[DifferentiatorState[AlgorithmState], chex.Array]:
+                      state: DifferentiatorState[TikhonovState],
+                      t: chex.Array) -> Tuple[DifferentiatorState[TikhonovState], chex.Array]:
+        assert t.shape[1] == 1
         init_offset = state.input_data.outputs[0, :]
         v_apply = vmap(fitSingleStateTikhonov,
                        in_axes=(None, 1, None, None, None, 0),
@@ -95,12 +96,13 @@ class TikhonovDifferentiator(BaseDifferentiator):
         _, x_dot_fit, A, D = v_apply(state.input_data.inputs,
                                      state.input_data.outputs, t,
                                      self.regtype, self.lambda_, init_offset)
-        state.algo_state = AlgorithmState(A=A, D=D)
+        state.algo_state = TikhonovState(A=A, D=D)
         return state, x_dot_fit
 
     def predict(self,
-                state: DifferentiatorState[AlgorithmState],
-                t: chex.Array) -> chex.Array:
+                state: DifferentiatorState[TikhonovState],
+                t: chex.Array) -> Tuple[DifferentiatorState[TikhonovState], chex.Array]:
+        assert t.shape[1] == 1
         init_offset = state.input_data.outputs[0, :]
         v_apply = vmap(fitSingleStateTikhonov,
                        in_axes=(None, 1, None, None, None, 0),
@@ -108,20 +110,16 @@ class TikhonovDifferentiator(BaseDifferentiator):
         x_fit, _, A, D = v_apply(state.input_data.inputs,
                                  state.input_data.outputs, t,
                                  self.regtype, self.lambda_, init_offset)
-        state.algo_state = AlgorithmState(A=A, D=D)
-        return x_fit
+        state.algo_state = TikhonovState(A=A, D=D)
+        return state, x_fit
     
 
 if __name__ == '__main__':
-    # Test the differentiator
-
-    # Create Data
     key = jr.PRNGKey(0)
 
     def f(x):
         return (jnp.sin(2 * jnp.pi * x / 2) + 0.5 * jnp.sin(6 * jnp.pi * x / 2) +
                 0.25 * jnp.cos(4 * jnp.pi * x) + 0.1 * x) + 2.5
-    
     def f_dot(x):
         return (jnp.pi * jnp.cos(2 * jnp.pi * x / 2) + 1.5 * jnp.pi * jnp.cos(6 * jnp.pi * x / 2) -
                 1 * jnp.pi * jnp.sin(4 * jnp.pi * x) + 0.1)
@@ -140,7 +138,7 @@ if __name__ == '__main__':
     diff = TikhonovDifferentiator(state_dim=1, regtype='second', lambda_=0.002)
     state = diff.train(key, data)
     state, x_dot_fit = diff.differentiate(state, test_t)
-    x_fit = diff.predict(state, test_t)
+    state, x_fit = diff.predict(state, test_t)
     fig, _ = diff.plot_fit(true_t=t,
                   pred_x=x_fit,
                   true_x=x,

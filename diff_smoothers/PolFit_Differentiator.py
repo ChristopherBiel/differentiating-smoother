@@ -1,59 +1,108 @@
-import jax.numpy as jnp
 from jax import vmap
+import jax.numpy as jnp
+import jax.random as jr
+from typing import Tuple
+import chex
 
-def fitMultiStatePolynomial(t, x, regtype, lambda_, init_offset=None):
-    """Fit Tikhonov regularization to multiple state data
-    t: (m, 1) - m different samples of data
-    x: (m, d) - d different states
-    regtype: 'none', 'first', 'second'
-    lambda_: Regularization parameter
-    init_offset: (d)
-    """
-    # Use vmap to calculate for single states
-    print(f"Input shapes: {t.shape} - {x.shape} - {init_offset.shape}")
-    if init_offset is None:
-        init_offset = jnp.zeros((x.shape[1],))
-    v_apply = vmap(fitSingleStateTikhonov, in_axes=(None, 1, None, None, 0), out_axes=(1))
-    x_fit, x_dot_fit = v_apply(t, x, regtype, lambda_, init_offset)
-    return x_fit, x_dot_fit
+from bsm.utils.normalization import Data
+from diff_smoothers.Base_Differentiator import BaseDifferentiator, DifferentiatorState
 
-def fitSinglePolynomial(t, x, regtype, lambda_, init_offset=0):
+def fitSinglePolynomial(t: chex.Array,
+                        x: chex.Array,
+                        degree: int,
+                        lambda_: float) -> chex.Array:
     """Fit a polynomial to the data with regularisation
     t: (m, 1) - m different samples of data
     x: (m, 1)
-    regtype: 'zero', 'first', 'second'
+    degree: Degree of the polynomial
     lambda_: Regularization parameter
-    init_offset: true function value at the lower bound
     """
-    n = t.shape[0]
-    x = x - init_offset
-    dt = (t[-1] - t[0]) / (n-1)
+    m = degree + 1
+    A = jnp.vander(t.flatten(), m)
+    D = jnp.eye(m)
+    pol_coeff = jnp.linalg.solve(A.T @ A + lambda_ * D.T @ D, jnp.dot(A.T, x))
+    return pol_coeff.flatten()
 
-    # Calculate the derivative by solving the least squares problem
-    A = jnp.tri(n, n, -1) * dt
-    if regtype == 'zero':
-        D = jnp.eye(n)
-    elif regtype == 'first':
-        D1 = jnp.zeros((n - 1, n))# Set the right hand diagonal to 1
-        D1 = D1.at[jnp.arange(n-1), jnp.arange(n-1)].set(-1)
-        D1 = D1.at[jnp.arange(n-1), jnp.arange(1, n)].set(1)
-        D = jnp.vstack((jnp.eye(n), D1))
-    elif regtype == 'second':
-        D1 = jnp.zeros((n - 1, n))
-        D1 = D1.at[jnp.arange(n-1), jnp.arange(n-1)].set(-1)
-        D1 = D1.at[jnp.arange(n-1), jnp.arange(1, n)].set(1)
-        D2 = jnp.zeros((n - 2, n))
-        D2 = D2.at[jnp.arange(n-2), jnp.arange(n-2)].set(1)
-        D2 = D2.at[jnp.arange(n-2), jnp.arange(1, n-1)].set(-2)
-        D2 = D2.at[jnp.arange(n-2), jnp.arange(2, n)].set(1)
-        D = jnp.vstack((jnp.eye(n), D1, D2))
-    else:
-        raise ValueError('Unknown regtype')
+@chex.dataclass
+class PolFitState:
+    pol_coeff: chex.Array
+
+class PolFit_Differentiator(BaseDifferentiator):
+    def __init__(self,
+                 state_dim: int,
+                 degree: int,
+                 lambda_: float):
+        super().__init__(state_dim)
+        self.degree = degree
+        self.lambda_ = lambda_
+
+    def train(self,
+              key: jr.PRNGKey,
+              data: Data) -> DifferentiatorState[PolFitState]:
+        assert data.inputs.shape[1] == 1
+        assert data.outputs.shape[1] == self.state_dim
+        v_apply = vmap(fitSinglePolynomial, in_axes=(None, 1, None, None),
+                       out_axes=(1))
+        pol_coeff = v_apply(data.inputs, data.outputs,
+                            self.degree, self.lambda_)
+        if jnp.isnan(pol_coeff).any():
+            raise ValueError('NaNs in the polynomial coefficients.\
+                              This might be because of a too high degree or too low lambda.')
+        return DifferentiatorState(input_data=data,
+                                   key=key,
+                                   algo_state=PolFitState(pol_coeff=pol_coeff))
+
+    def differentiate(self,
+                      state: DifferentiatorState[PolFitState],
+                      t: chex.Array) -> Tuple[DifferentiatorState[PolFitState], chex.Array]:
+        assert t.shape[1] == 1
+        def diff_single(t, pol_coeff):
+            der_pol_coeff = jnp.polyder(pol_coeff)
+            return jnp.polyval(der_pol_coeff, t)
+        x_dot_fit = vmap(diff_single, in_axes=(None, 1), out_axes=(1))\
+                        (t.reshape(-1,), state.algo_state.pol_coeff)
+        return state, x_dot_fit
+
+    def predict(self,
+                state: DifferentiatorState[PolFitState],
+                t: chex.Array) -> Tuple[DifferentiatorState[PolFitState], chex.Array]:
+        assert t.shape[1] == 1
+        x_fit = vmap(jnp.polyval, in_axes=(1, None), out_axes=(1))\
+                    (state.algo_state.pol_coeff, t.reshape(-1,))
+        return state, x_fit
+
+if __name__=="__main__":
+    key = jr.PRNGKey(0)
+
+    def f(x):
+        return (jnp.sin(2 * jnp.pi * x / 2) + 0.5 * jnp.sin(6 * jnp.pi * x / 2) +
+                0.25 * jnp.cos(4 * jnp.pi * x) + 0.1 * x) + 2.5
+    def f_dot(x):
+        return (jnp.pi * jnp.cos(2 * jnp.pi * x / 2) + 1.5 * jnp.pi * jnp.cos(6 * jnp.pi * x / 2) -
+                1 * jnp.pi * jnp.sin(4 * jnp.pi * x) + 0.1)
     
-    x_dot_fit = jnp.linalg.solve(A.T @ A + lambda_ * D.T @ D, jnp.dot(A.T, x))
+    noise_level = 0.1
+    d_l, d_u = 0, 10
+    num_samples = 200
+    t = jnp.linspace(d_l, d_u, num_samples).reshape(-1, 1)
+    x = f(t)
+    x_dot = f_dot(t)
+    x = x + noise_level*jr.normal(key=key, shape=x.shape)
+    data = Data(inputs=t, outputs=x)
 
-    # Calculate the integral by summing up the derivatives
-    x_fit = jnp.cumsum(x_dot_fit*dt)
-    x_fit += init_offset
-
-    return x_fit, x_dot_fit
+    # Create target timestamps
+    test_t = jnp.linspace(d_l, d_u, num_samples).reshape(-1, 1)
+    diff = PolFit_Differentiator(state_dim=1,
+                                 degree=15,
+                                 lambda_=0.001)
+    state = diff.train(key, data)
+    state, x_dot_fit = diff.differentiate(state, test_t)
+    state, x_fit = diff.predict(state, test_t)
+    fig, _ = diff.plot_fit(true_t=t,
+                  pred_x=x_fit,
+                  true_x=x,
+                  pred_x_dot=x_dot_fit,
+                  true_x_dot=x_dot,
+                  pred_t=test_t,
+                  state_labels=['x'])
+    fig.savefig('PolFit_Differentiator.png')
