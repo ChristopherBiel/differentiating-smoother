@@ -16,6 +16,8 @@ from diff_smoothers.data_functions.data_handling import split_dataset
 from diff_smoothers.data_functions.data_output import plot_derivative_data, plot_data
 from diff_smoothers.eval import evaluate_dyn_model
 
+ENTITY = 'cbiel01'
+
 def experiment(project_name: str = 'DiffSmoother',
                seed: int = 0,
                num_traj: int = 1,
@@ -72,6 +74,7 @@ def experiment(project_name: str = 'DiffSmoother',
     if logging_mode_wandb > 0:
         import wandb
         wandb.init(project=project_name,
+                   dir='/cluster/scratch/' + ENTITY,
                    config=config,)
 
 

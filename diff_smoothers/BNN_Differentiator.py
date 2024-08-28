@@ -71,7 +71,7 @@ class BNNSmootherDifferentiator(BaseDifferentiator):
                  beta: chex.Array | optax.Schedule | None = None,
                  bnn_type: BayesianNeuralNet = DeterministicEnsemble,
                  *args, **kwargs):
-        self.state_dim = state_dim
+        super().__init__(state_dim)
         self.bnn_type = bnn_type
         if isinstance(num_training_steps, int):
             self.num_training_steps = optax.constant_schedule(num_training_steps)
