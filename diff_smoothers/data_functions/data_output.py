@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
 import chex
+from typing import List
 from bsm.utils.normalization import Data
 from diff_smoothers.data_functions.data_handling import split_dataset
 
@@ -15,7 +16,7 @@ def plot_derivative_data(t: chex.Array,
                          x_dot_smoother_std: chex.Array = None,
                          num_trajectories_to_plot: int = 1,
                          num_trajectory_to_plot: int = 0,
-                         state_labels: str = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$'],
+                         state_labels: List[str] = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$'],
                          ) -> plt.figure:
     """Either pass all states and values with three dimensions (num_traj, num_samples, num_states)
     OR pass all states and values with only two dimensions (num_traj*num_samples, num_states)"""
@@ -107,7 +108,7 @@ def plot_prediction_data(t: chex.Array,
                          x_est_std: chex.Array,
                          beta: chex.Array,
                          source: str = "",
-                         state_labels: str = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$'],
+                         state_labels: List[str] = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$'],
                          ) -> plt.figure:
     """Either pass all states and values with three dimensions (num_traj, num_samples, num_states)
     OR pass all states and values with only two dimensions (num_traj*num_samples, num_states)"""
@@ -136,7 +137,7 @@ def plot_data(t: chex.Array,
               u: chex.Array = None,
               x_dot: chex.Array = None,
               title: str = '',
-              state_labels: str = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$']) -> plt.figure:
+              state_labels: List[str] = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$']) -> plt.figure:
     if x.ndim == 2:
         # Split the data
         if u is not None:
