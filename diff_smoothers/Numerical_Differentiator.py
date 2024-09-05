@@ -45,16 +45,19 @@ def fitSingleStateTikhonov(t_source: chex.Array,
         D1 = jnp.zeros((m - 1, m))# Set the right hand diagonal to 1
         D1 = D1.at[jnp.arange(m-1), jnp.arange(m-1)].set(-1)
         D1 = D1.at[jnp.arange(m-1), jnp.arange(1, m)].set(1)
-        D = jnp.vstack((jnp.eye(m), D1))
+        T1 = jnp.diag(1.0/jnp.diff(t_target, axis=0).reshape(-1))
+        D = jnp.vstack((jnp.eye(m), T1@D1))
     elif regtype == 'second':
         D1 = jnp.zeros((m - 1, m))
         D1 = D1.at[jnp.arange(m-1), jnp.arange(m-1)].set(-1)
         D1 = D1.at[jnp.arange(m-1), jnp.arange(1, m)].set(1)
+        T1 = jnp.diag(1.0/jnp.diff(t_target, axis=0).reshape(-1))
         D2 = jnp.zeros((m - 2, m))
         D2 = D2.at[jnp.arange(m-2), jnp.arange(m-2)].set(1)
         D2 = D2.at[jnp.arange(m-2), jnp.arange(1, m-1)].set(-2)
         D2 = D2.at[jnp.arange(m-2), jnp.arange(2, m)].set(1)
-        D = jnp.vstack((jnp.eye(m), D1, D2))
+        T2 = jnp.diag(1.0/(t_target[2:] - t_target[:-2]).reshape(-1))
+        D = jnp.vstack((jnp.eye(m), T1@D1, T2@D2))
     else:
         raise ValueError('Unknown regtype')
     
@@ -126,7 +129,7 @@ if __name__ == '__main__':
     
     noise_level = 0.1
     d_l, d_u = 0, 10
-    num_samples = 400
+    num_samples = 201
     t = jnp.linspace(d_l, d_u, num_samples).reshape(-1, 1)
     x = f(t)
     x_dot = f_dot(t)
@@ -135,7 +138,7 @@ if __name__ == '__main__':
 
     # Create target timestamps
     test_t = jnp.linspace(d_l, d_u, num_samples).reshape(-1, 1)
-    diff = TikhonovDifferentiator(state_dim=1, regtype='second', lambda_=0.002)
+    diff = TikhonovDifferentiator(state_dim=1, regtype='first', lambda_=0.00001)
     state = diff.train(key, data)
     state, x_dot_fit = diff.differentiate(state, test_t)
     state, x_fit = diff.predict(state, test_t)
