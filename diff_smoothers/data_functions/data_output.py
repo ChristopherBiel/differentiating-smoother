@@ -172,7 +172,7 @@ def plot_data(t: chex.Array,
         fig = plt.figure(figsize=(10,8))
         axes = []
         for k01 in range(3):
-            axes.append(plt.subplot2grid((3*input_dim,2),(k01,0), colspan=input_dim))
+            axes.append(plt.subplot2grid((3*input_dim,2),(k01,0), rowspan=input_dim))
         for k01 in range(input_dim):
             axes.append(plt.subplot2grid((3*input_dim,2),(3*k01,1), rowspan=3))
         for k01 in range(state_dim):
