@@ -219,7 +219,7 @@ def plot_data_reward(t: chex.Array,
         t = data.inputs
         x = data.outputs[:,:,:x.shape[-1]]
         u = data.outputs[:,:,x.shape[-1]:x.shape[-1]+u.shape[-1]]
-        x_dot = data.outputs[:,:,x.shape[-1]+u.shape[-1]:]
+        reward = data.outputs[:,:,x.shape[-1]+u.shape[-1]:]
     t1 = t[-1,:,:]
     x1 = x[-1,:,:]
     u1 = u[-1,:,:]
