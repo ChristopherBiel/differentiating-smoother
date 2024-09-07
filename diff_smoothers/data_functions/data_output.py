@@ -172,7 +172,7 @@ def plot_data(t: chex.Array,
         fig = plt.figure(figsize=(10,8))
         axes = []
         for k01 in range(3):
-            axes.append(plt.subplot2grid((3*input_dim,2),(k01,0), rowspan=input_dim))
+            axes.append(plt.subplot2grid((3*input_dim,2),(input_dim*k01,0), rowspan=input_dim))
         for k01 in range(input_dim):
             axes.append(plt.subplot2grid((3*input_dim,2),(3*k01,1), rowspan=3))
         for k01 in range(state_dim):
@@ -203,6 +203,58 @@ def plot_data(t: chex.Array,
             axes[3+k01].set_ylabel('Inputs')
             plt.legend()
             axes[3].set_title('Control inputs for all trajectories')
+
+    fig.suptitle(title)
+    return fig
+
+def plot_data_reward(t: chex.Array,
+                     x: chex.Array,
+                     reward: chex.Array,
+                     u: chex.Array,
+                     title: str = '',
+                     state_labels: List[str] = [r'$cos(\theta)$', r'$sin(\theta)$', r'$\omega$']) -> plt.figure:
+    if x.ndim == 2:
+        data = Data(inputs=t, outputs=jnp.concatenate([x, u, reward], axis=-1))
+        data, _ = split_dataset(data)
+        t = data.inputs
+        x = data.outputs[:,:,:x.shape[-1]]
+        u = data.outputs[:,:,x.shape[-1]:x.shape[-1]+u.shape[-1]]
+        x_dot = data.outputs[:,:,x.shape[-1]+u.shape[-1]:]
+    t1 = t[-1,:,:]
+    x1 = x[-1,:,:]
+    u1 = u[-1,:,:]
+    reward1 = reward[-1,:,:]
+
+    state_dim = x.shape[-1]
+    input_dim = u.shape[-1]
+    fig = plt.figure(figsize=(10,8))
+    axes = []
+    axes.append(plt.subplot2grid((2,2),(0,0)))  # Top Left Plot - Inputs
+    axes.append(plt.subplot2grid((2,2),(0,1), rowspan=2)) # Right Plot - States
+    axes.append(plt.subplot2grid((2,2),(1,0))) # Bottom Left Plot - Reward
+
+    # Plot inputs
+    for k01 in range(input_dim):
+        axes[0].plot(t1, u1[:,k01], label=r'$u_{%s}$'%(str(k01)))
+    axes[0].set_xlabel('Time')
+    axes[0].set_ylabel('Inputs')
+    axes[0].legend()
+    axes[0].grid(True, which='both')
+
+    # Plot states
+    for k01 in range(state_dim):
+        axes[1].plot(t1, x1[:,k01], label=state_labels[k01])
+    axes[1].set_xlabel('Time')
+    axes[1].set_ylabel('States')
+    axes[1].legend()
+    axes[1].grid(True, which='both')
+
+    # Plot reward
+    axes[2].plot(t1, reward1, label=r'$\dot{x}_{%s}$'%(str(k01)))
+    axes[2].set_xlabel('Time')
+    axes[2].set_ylabel('Reward')
+    axes[2].legend()
+    axes[2].grid(True, which='both')
 
     fig.suptitle(title)
     return fig
