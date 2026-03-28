@@ -138,6 +138,7 @@ if __name__ == '__main__':
 
     # Create target timestamps
     test_t = jnp.linspace(d_l, d_u, num_samples).reshape(-1, 1)
+    A =createIntegrationMatrix(t, test_t)
     diff = TikhonovDifferentiator(state_dim=1, regtype='first', lambda_=0.00001)
     state = diff.train(key, data)
     state, x_dot_fit = diff.differentiate(state, test_t)
