@@ -196,11 +196,11 @@ if __name__ == '__main__':
                                      output_stds=data_std,
                                      logging_wandb=False,
                                      beta=jnp.array([2.0]),
-                                     num_particles=5,
-                                     features=[64, 64],
+                                     num_particles=10,
+                                     features=[64, 64, 64],
                                      bnn_type=DeterministicEnsemble,
                                      train_share=1.0,
-                                     num_training_steps=48_000,
+                                     num_training_steps=128_000,
                                      weight_decay=1e-4,
                                      return_best_model=True,
                                      eval_frequency=1_000,)
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     test_t = jnp.linspace(d_l-3, d_u+3, 300).reshape(-1, 1)
     test_x = f(test_t)
 
-    pred_x = diffr.predict_distribution(differentiator_state, test_t)
+    differentiator_state, pred_x = diffr.predict_distribution(differentiator_state, test_t)
     
     plt.scatter(test_t.reshape(-1), test_x, s=25, label='Data', color='red', alpha=0.5)
     plt.plot(test_t, pred_x.mean, label='Mean', color='blue')
@@ -227,15 +227,15 @@ if __name__ == '__main__':
     plt.legend(by_label.values(), by_label.keys())
     plt.grid(True, which='both')
     plt.show()
-    plt.savefig('NNSmoother_extrapolate.pdf')
+    #plt.savefig('NNSmoother_extrapolate.pdf')
     plt.close()
 
-    num_test_points = 200
+    num_test_points = 400
     in_domain_test_t = jnp.linspace(d_l, d_u, num_test_points).reshape(-1, 1)
     in_domain_test_x = f(in_domain_test_t)
     in_domain_test_xdot = f_dot(in_domain_test_t)
 
-    in_domain_preds = diffr.predict(differentiator_state, in_domain_test_t)
+    differentiator_state, in_domain_preds = diffr.predict(differentiator_state, in_domain_test_t)
     differentiator_state, derivative = diffr.differentiate_distribution(differentiator_state, in_domain_test_t)
     plt.plot(in_domain_test_t, in_domain_preds, label=r'$x_{Est}$', color='blue')
     plt.plot(in_domain_test_t, in_domain_test_x, label=r'$x_{True}$', color='Green')
